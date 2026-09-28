@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Optional
 from enum import Enum
 from datetime import datetime
@@ -17,6 +17,12 @@ class DietarySystem(str, Enum):
     vegan = "vegan"
     vegetarian = "vegetarian"
     pescatarian = "pescatarian"
+
+
+class KosherCategory(str, Enum):
+    parve = "parve"
+    dairy = "dairy"
+    meat = "meat"
 
 
 class Ingredient(BaseModel):
@@ -44,12 +50,21 @@ class RecipeCreate(BaseModel):
     tags: list[str] = []
     dietary_system: DietarySystem = DietarySystem.none
     allergies_applied: list[str] = []
-    source: RecipeSource = RecipeSource.ai_generated
+    kosher_category: Optional[KosherCategory] = None
+    source: RecipeSource = RecipeSource.manual
     original_text: Optional[str] = None
     notes: Optional[str] = None
     image_url: Optional[str] = None
     parent_recipe_id: Optional[str] = None
     collection_ids: list[str] = []
+    collection_names: list[str] = []  # found or created at save time
+
+    @model_validator(mode="after")
+    def check_kosher_category(self):
+        # Mirrors the has_kosher_category DB constraint so bad input gets a clear 422
+        if (self.dietary_system == DietarySystem.kosher) != (self.kosher_category is not None):
+            raise ValueError("kosher_category is required for kosher recipes and not allowed otherwise")
+        return self
 
 
 class RecipeUpdate(BaseModel):
@@ -79,6 +94,7 @@ class Recipe(BaseModel):
     tags: list[str]
     dietary_system: DietarySystem
     allergies_applied: list[str]
+    kosher_category: Optional[KosherCategory]
     is_pinned: bool
     source: RecipeSource
     original_text: Optional[str]

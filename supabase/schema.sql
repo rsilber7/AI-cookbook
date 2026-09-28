@@ -10,6 +10,9 @@ create type recipe_source as enum (
   'ai_generated', 'pasted', 'manual'
 );
 
+create type kosher_category as enum (
+  'meat', 'dairy', 'parve'
+);
 -- ============================================================
 -- users (extends Supabase Auth)
 -- ============================================================
@@ -60,6 +63,7 @@ create table public.recipes (
   cook_time_mins      integer,
   tags                text[] not null default '{}',
   dietary_system      dietary_system not null default 'none',
+  kosher_category     kosher_category,
   allergies_applied   text[] not null default '{}',
   is_pinned           boolean not null default false,
   source              recipe_source not null default 'ai_generated',
@@ -68,7 +72,12 @@ create table public.recipes (
   image_url           text,
   parent_recipe_id    uuid references public.recipes (id) on delete set null,
   created_at          timestamptz not null default now(),
-  updated_at          timestamptz not null default now()
+  updated_at          timestamptz not null default now(),
+
+  constraint has_kosher_category check (
+  (dietary_system ='kosher' and kosher_category is not null) or 
+  (dietary_system != 'kosher' and kosher_category is null)
+  )
 );
 
 alter table public.recipes enable row level security;

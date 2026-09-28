@@ -23,10 +23,9 @@ async def create_collection(body: CollectionCreate, current_user=Depends(get_cur
     result = (
         supabase.table("collections")
         .insert({"name": body.name, "user_id": current_user.id})
-        .single()
         .execute()
     )
-    return result.data
+    return result.data[0]
 
 
 @router.delete("/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
