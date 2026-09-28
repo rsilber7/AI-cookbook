@@ -8,8 +8,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=UserProfile)
 async def get_profile(current_user=Depends(get_current_user)):
-    result = supabase.table("users").select("*").eq("id", current_user.id).single().execute()
-    if not result.data:
+    result = supabase.table("users").select("*").eq("id", current_user.id).maybe_single().execute()
+    if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User profile not found")
     return result.data
 
@@ -24,7 +24,8 @@ async def update_profile(body: UserProfileUpdate, current_user=Depends(get_curre
         supabase.table("users")
         .update(updates)
         .eq("id", current_user.id)
-        .single()
         .execute()
     )
-    return result.data
+    if not result.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User profile not found")
+    return result.data[0]
