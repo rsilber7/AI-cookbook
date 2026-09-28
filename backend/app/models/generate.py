@@ -1,19 +1,22 @@
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 from uuid import UUID
 from app.models.recipe import Ingredient, Step, KosherCategory, RecipeCreate
 
 
-class GenerateRequest(BaseModel):
-    # What to make, or (when a base recipe is given) how to change it
-    description: str
-    # User-chosen title; always wins over the AI's
-    title: Optional[str] = None
-
+class RuleOptions(BaseModel):
+    """Which diet/allergy rules apply to an AI request. Shared by generate and import."""
     apply_dietary: bool = True
     apply_allergies: bool = True
     # One-off allergies for this recipe (guests, "make it dairy-free", ...)
     extra_allergies: list[str] = []
+
+
+class GenerateRequest(RuleOptions):
+    # What to make, or (when a base recipe is given) how to change it
+    description: str
+    # User-chosen title; always wins over the AI's
+    title: Optional[str] = None
 
     # Set at most one: a draft being tweaked, or a saved recipe being adapted
     base_recipe: Optional[RecipeCreate] = None
@@ -24,6 +27,13 @@ class GenerateRequest(BaseModel):
         if self.base_recipe and self.base_recipe_id:
             raise ValueError("Send base_recipe or base_recipe_id, not both")
         return self
+
+
+class ImportRequest(RuleOptions):
+    # A recipe pasted from anywhere (a text, the Notes app, a website)
+    text: str = Field(min_length=1, max_length=20_000)
+    # User-chosen title; otherwise the recipe's own title is kept
+    title: Optional[str] = None
 
 
 class AIRecipe(BaseModel):
