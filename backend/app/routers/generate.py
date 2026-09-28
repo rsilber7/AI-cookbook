@@ -1,6 +1,7 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from openai import AsyncOpenAI, OpenAIError
+from app.allergens import find_allergens, find_kosher_problems
 from app.config import settings
 from app.database import supabase
 from app.dependencies import get_current_user
@@ -71,6 +72,30 @@ def build_instructions(dietary_system: DietarySystem, allergies: list[str], titl
         "otherwise set notes to null."
     )
     return "\n".join(lines)
+
+
+async def _ask_ai(instructions: str, user_input: str) -> AIRecipe:
+    """One AI call, with the reply forced into the AIRecipe shape."""
+    try:
+        response = await client.responses.parse(
+            model=settings.openai_model,
+            instructions=instructions,
+            input=user_input,
+            text_format=AIRecipe,
+        )
+    except OpenAIError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"AI request failed: {e}")
+    if response.output_parsed is None:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="AI did not return a recipe")
+    return response.output_parsed
+
+
+def _safety_problems(ai_recipe: AIRecipe, dietary_system: DietarySystem, allergies: list[str]) -> list[str]:
+    """Our own check of the AI's ingredients against the active rules."""
+    findings = find_allergens(ai_recipe.ingredients, allergies)
+    if dietary_system == DietarySystem.kosher:
+        findings += find_kosher_problems(ai_recipe.ingredients, ai_recipe.kosher_category)
+    return [str(f) for f in findings]
 
 
 def _load_saved_recipe(recipe_id: str, user_id: str) -> tuple[dict, list[str]]:
@@ -152,27 +177,25 @@ async def generate_recipe(body: GenerateRequest, current_user=Depends(get_curren
     else:
         user_input = f"Create a recipe for: {body.description}"
 
-    # 4. Ask the AI, forcing its reply into the AIRecipe shape
-    try:
-        response = await client.responses.parse(
-            model=settings.openai_model,
-            instructions=build_instructions(dietary_system, allergies, title_rule),
-            input=user_input,
-            text_format=AIRecipe,
+    # 4. Ask the AI, then 5. verify its answer with our own safety scan.
+    # If the scan finds problems, retry once and tell the AI exactly what was wrong.
+    instructions = build_instructions(dietary_system, allergies, title_rule)
+    ai_recipe = await _ask_ai(instructions, user_input)
+    problems = _safety_problems(ai_recipe, dietary_system, allergies)
+    if problems:
+        feedback = "\n".join(f"- {p}" for p in problems)
+        ai_recipe = await _ask_ai(
+            instructions,
+            f"{user_input}\n\nA previous attempt broke the rules:\n{feedback}\n"
+            "Replace those ingredients with safe alternatives.",
         )
-    except OpenAIError as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"AI request failed: {e}")
+        problems = _safety_problems(ai_recipe, dietary_system, allergies)
 
-    ai_recipe = response.output_parsed
-    if ai_recipe is None:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="AI did not return a recipe")
     if dietary_system == DietarySystem.kosher and ai_recipe.kosher_category is None:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail="AI did not classify the kosher recipe"
         )
-
-    # 5. Allergen safety scan (step 6)
-    warnings: list[str] = []
+    warnings = [f"Couldn't rule out: {p}" for p in problems]
 
     # 6. Fill in the record-keeping fields from our own data, not the AI's
     recipe = RecipeCreate(
