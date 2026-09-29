@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import { useSession } from './lib/useSession'
 import AllCollections from './pages/AllCollections'
 import CollectionPage from './pages/CollectionPage'
+import CreatePage from './pages/Create'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import RecipePage from './pages/RecipePage'
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/collections/all" element={<CollectionPage />} />
           <Route path="/collections/:id" element={<CollectionPage />} />
           <Route path="/recipes/:id" element={<RecipePage />} />
+          <Route path="/create" element={<CreatePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

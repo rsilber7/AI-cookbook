@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import BackLink from '../components/BackLink'
 import RecipeView from '../components/RecipeView'
 import { api } from '../lib/api'
@@ -43,6 +43,12 @@ export default function RecipePage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <BackLink />
         <div className="flex gap-2 text-sm">
+          <Link
+            to={`/create?mode=modify&base=${recipe.id}`}
+            className="rounded-lg bg-amber-700 px-3 py-1.5 font-medium text-white hover:bg-amber-800"
+          >
+            ✏️ Adapt with AI
+          </Link>
           <button
             onClick={togglePin}
             disabled={busy}

@@ -1,10 +1,13 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import NewRecipeButton from './NewRecipeButton'
 import ProfileBadge from './ProfileBadge'
 import ProfileProvider from './ProfileProvider'
 
 // Header shown on every logged-in page; the current page renders in <Outlet />.
 export default function Layout({ session }) {
+  const { pathname } = useLocation()
+
   return (
     <ProfileProvider>
       <div className="min-h-screen bg-stone-50 text-stone-900">
@@ -23,9 +26,11 @@ export default function Layout({ session }) {
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-4xl px-4 py-8">
+        {/* Bottom padding keeps content clear of the floating button */}
+        <main className="mx-auto max-w-4xl px-4 pb-28 pt-8">
           <Outlet />
         </main>
+        {pathname !== '/create' && <NewRecipeButton />}
       </div>
     </ProfileProvider>
   )
