@@ -50,6 +50,7 @@ def main() -> None:
     collection_existed = any(c["name"] == COLLECTION for c in api.get("/collections/").json())
 
     try:
+
         step("2. Set profile to kosher + tree nuts")
         r = api.patch("/users/me", json={"dietary_system": "kosher", "allergies": ["tree nuts"]})
         check("profile updated", r.status_code == 200, r.text)
@@ -98,6 +99,33 @@ def main() -> None:
         check("original unchanged", after["ingredients"] == original["ingredients"] and after["title"] == original["title"])
         check("copy is a separate recipe", r.json()["id"] != original["id"])
 
+        step("8. Import a pasted recipe that breaks the rules (AI call)")
+        pasted = (
+            "Walnut Beef Stir-Fry\n"
+            "1 lb beef strips, 1/2 cup walnuts, 2 tbsp butter, 1 onion, soy sauce\n"
+            "Melt butter, brown the beef, add onion and walnuts, finish with soy sauce."
+        )
+        r = api.post("/recipes/import", json={"text": pasted})
+        check("import returned 200", r.status_code == 200, r.text)
+        imported = r.json()["recipe"]
+        names = [i["name"].lower() for i in imported["ingredients"]]
+        print(f"     → {imported['title']} ({imported['kosher_category']})")
+        print(f"     → ingredients: {', '.join(names)}")
+        check("walnuts removed", not any("walnut" in n for n in names))
+        check("classified meat/dairy/parve", imported["kosher_category"] in ("meat", "dairy", "parve"))
+        check("source is pasted", imported["source"] == "pasted")
+        check("original text kept", imported["original_text"] == pasted)
+        check("no safety warnings", r.json()["warnings"] == [], str(r.json()["warnings"]))
+
+        r = api.post("/recipes/", json=imported)
+        check("imported recipe saved", r.status_code == 201, r.text)
+        created_recipe_ids.append(r.json()["id"])
+        check("saved as pasted", r.json()["source"] == "pasted")
+
+        r = api.post("/recipes/import", json={"text": ""})
+        check("empty paste rejected", r.status_code == 422, str(r.status_code))
+
+        
         step("8. Security: requests without a login are rejected")
         r = httpx.get(f"{BASE_URL}/recipes/", timeout=10)
         check("no-login request rejected", r.status_code in (401, 422), str(r.status_code))
@@ -111,8 +139,12 @@ def main() -> None:
                     api.delete(f"/collections/{c['id']}")
         check("test data deleted", all(api.get(f"/recipes/{i}").status_code == 404 for i in created_recipe_ids))
 
+
+
     print(f"\n{'All checks passed 🎉' if failures == 0 else f'{failures} check(s) failed'}")
     sys.exit(1 if failures else 0)
+
+
 
 
 if __name__ == "__main__":
