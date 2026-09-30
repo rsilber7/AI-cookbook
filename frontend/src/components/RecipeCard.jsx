@@ -1,16 +1,17 @@
 import { Link } from 'react-router-dom'
 import { KOSHER_CATEGORIES, dietInfo, totalMinutes } from '../lib/labels'
 
-// onRemove (optional) shows an × to take the recipe out of the current collection
-export default function RecipeCard({ recipe, onRemove }) {
+// onRemove (optional) shows an × to take the recipe out of the current collection.
+// className lets a page add a tilt or washi tape (e.g. "tape -rotate-1").
+export default function RecipeCard({ recipe, onRemove, className = '' }) {
   const minutes = totalMinutes(recipe)
   const kosher = KOSHER_CATEGORIES[recipe.kosher_category]
 
   return (
-    <div className="relative">
+    <div className={`relative transition hover:z-10 hover:rotate-0 ${className}`}>
       <Link
         to={`/recipes/${recipe.id}`}
-        className="flex h-full flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200 transition hover:-translate-y-0.5 hover:shadow-md"
+        className="flex h-full flex-col rounded-2xl bg-paper p-4 shadow-sm ring-1 ring-amber-900/10 transition hover:-translate-y-1 hover:shadow-md"
       >
         <h3 className={`font-serif text-lg leading-snug ${onRemove ? 'pr-6' : ''}`}>
           {recipe.is_pinned && <span className="mr-1" aria-label="Pinned">📌</span>}

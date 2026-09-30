@@ -8,6 +8,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import RecipeEditorPage from './pages/RecipeEditor'
 import RecipePage from './pages/RecipePage'
+import Welcome from './pages/Welcome'
 
 export default function App() {
   const session = useSession()
@@ -15,11 +16,23 @@ export default function App() {
   // Still checking whether the user is logged in
   if (session === undefined) return null
 
+  // Logged out: the welcome page and login; anything else goes to the welcome page
+  if (!session) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Welcome />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    )
+  }
+
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={session ? <Navigate to="/" replace /> : <Login />} />
-        <Route element={session ? <Layout session={session} /> : <Navigate to="/login" replace />}>
+        <Route element={<Layout session={session} />}>
           <Route path="/" element={<Home />} />
           <Route path="/collections" element={<AllCollections />} />
           <Route path="/collections/all" element={<CollectionPage />} />

@@ -40,3 +40,10 @@ export function totalMinutes(recipe) {
   const total = (recipe.prep_time_mins ?? 0) + (recipe.cook_time_mins ?? 0)
   return total || null
 }
+
+// Cookbook-tab colors for collections, cycled by position
+const TAB_COLORS = ['border-l-tomato', 'border-l-butter', 'border-l-basil', 'border-l-blueberry', 'border-l-plum']
+
+export function tabColor(index) {
+  return TAB_COLORS[index % TAB_COLORS.length]
+}

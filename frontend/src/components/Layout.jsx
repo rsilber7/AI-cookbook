@@ -14,10 +14,12 @@ export default function Layout({ session }) {
 
   return (
     <ProfileProvider>
-      <div className="min-h-screen bg-stone-50 text-stone-900">
-        <header className="border-b border-stone-200 bg-white">
+      <div className="min-h-screen text-stone-900">
+        <header className="border-b border-amber-900/10 bg-paper/90 backdrop-blur">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
-            <Link to="/" className="font-serif text-xl">Interactive Cookbook</Link>
+            <Link to="/" className="font-display text-xl font-semibold">
+              🍳 <span className="hidden sm:inline">Interactive Cookbook</span>
+            </Link>
             <div className="flex items-center gap-2 text-sm">
               <ProfileBadge />
               <button
