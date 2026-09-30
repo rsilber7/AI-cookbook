@@ -4,6 +4,10 @@ import NewRecipeButton from './NewRecipeButton'
 import ProfileBadge from './ProfileBadge'
 import ProfileProvider from './ProfileProvider'
 
+// The floating "New recipe" button is hidden while already creating or editing one
+const isEditingPage = (pathname) =>
+  pathname === '/create' || pathname === '/recipes/new' || pathname.endsWith('/edit')
+
 // Header shown on every logged-in page; the current page renders in <Outlet />.
 export default function Layout({ session }) {
   const { pathname } = useLocation()
@@ -30,7 +34,7 @@ export default function Layout({ session }) {
         <main className="mx-auto max-w-4xl px-4 pb-28 pt-8">
           <Outlet />
         </main>
-        {pathname !== '/create' && <NewRecipeButton />}
+        {!isEditingPage(pathname) && <NewRecipeButton />}
       </div>
     </ProfileProvider>
   )

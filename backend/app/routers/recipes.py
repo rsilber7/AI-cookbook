@@ -3,10 +3,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.dependencies import get_current_user
 from app.database import supabase
 from app.models.collection import Collection, RecipeCollections
-from app.models.recipe import Recipe, RecipeCreate, RecipeUpdate
+from app.allergens import check_recipe
+from app.models.recipe import (
+    DietarySystem, Ingredient, KosherCategory, Recipe, RecipeCheck, RecipeCheckResult,
+    RecipeCreate, RecipeSource, RecipeUpdate,
+)
 from app.ownership import find_collection_by_name, require_owned
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
+
+# Fields whose change requires re-checking the recipe's diet/allergy labels
+LABEL_FIELDS = {"ingredients", "dietary_system", "kosher_category", "allergies_applied"}
 
 
 @router.get("/", response_model=list[Recipe])
@@ -53,8 +60,39 @@ def _find_or_create_collections(user_id: str, names: list[str]) -> list[str]:
     return ids
 
 
+def _reject_false_labels(
+    ingredients: list[Ingredient],
+    dietary_system: DietarySystem,
+    kosher_category: KosherCategory | None,
+    allergies: list[str],
+) -> None:
+    """422 if the ingredients contradict the recipe's diet/allergy labels."""
+    findings = check_recipe(ingredients, dietary_system, kosher_category, allergies)
+    if findings:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=[{"msg": f"{f} (breaks the {f.label} label)", "label": f.label, "ingredient": f.ingredient} for f in findings],
+        )
+
+
+@router.post("/check", response_model=RecipeCheckResult)
+async def check_labels(body: RecipeCheck, current_user=Depends(get_current_user)):
+    """Free keyword scan (no AI): which labels would these ingredients break?"""
+    findings = check_recipe(body.ingredients, body.dietary_system, body.kosher_category, body.allergies)
+    return {
+        "problems": [
+            {"ingredient": f.ingredient, "problem": f.problem, "label": f.label, "message": str(f)}
+            for f in findings
+        ]
+    }
+
+
 @router.post("/", response_model=Recipe, status_code=status.HTTP_201_CREATED)
 async def create_recipe(body: RecipeCreate, current_user=Depends(get_current_user)):
+    # Hand-written recipes weren't checked by the AI flow, so verify their labels here
+    if body.source == RecipeSource.manual:
+        _reject_false_labels(body.ingredients, body.dietary_system, body.kosher_category, body.allergies_applied)
+
     # Check everything first, so a rejected save leaves nothing half-created
     given_ids = [str(cid) for cid in body.collection_ids]
     require_owned("collections", given_ids, current_user.id, "Collection not found")
@@ -78,9 +116,34 @@ async def create_recipe(body: RecipeCreate, current_user=Depends(get_current_use
 
 @router.patch("/{recipe_id}", response_model=Recipe)
 async def update_recipe(recipe_id: UUID, body: RecipeUpdate, current_user=Depends(get_current_user)):
-    updates = body.model_dump(mode="json", exclude_none=True)
+    # exclude_unset (not exclude_none) so optional fields like cook time can be cleared with null
+    updates = body.model_dump(mode="json", exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+
+    # Changing ingredients or labels must keep the labels true (a pin or title edit skips this)
+    if LABEL_FIELDS & updates.keys():
+        current = (
+            supabase.table("recipes")
+            .select("*")
+            .eq("id", str(recipe_id))
+            .eq("user_id", current_user.id)
+            .maybe_single()
+            .execute()
+        )
+        if not current:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+        merged = {**current.data, **updates}
+        diet = DietarySystem(merged["dietary_system"])
+        category = KosherCategory(merged["kosher_category"]) if merged["kosher_category"] else None
+        if (diet == DietarySystem.kosher) != (category is not None):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Kosher recipes need a meat, dairy, or parve category (and other recipes can't have one)",
+            )
+        _reject_false_labels(
+            [Ingredient(**i) for i in merged["ingredients"]], diet, category, merged["allergies_applied"]
+        )
 
     result = (
         supabase.table("recipes")

@@ -159,7 +159,21 @@ def main() -> None:
         check("collection deleted", r.status_code == 204, r.text)
         check("its recipe still exists", api.get(f"/recipes/{original['id']}").status_code == 200)
 
-        step("10. Security: no access to anything that isn't yours")
+        step("10. Hand-written recipes: labels must be true")
+        manual = {"title": "Smoke Test Schnitzel", "ingredients": [{"name": "chicken cutlets"}], "steps": [],
+                  "dietary_system": "kosher", "kosher_category": "meat", "allergies_applied": ["tree nuts"], "source": "manual"}
+        r = api.post("/recipes/", json=manual)
+        check("honest hand-written recipe saved (no steps needed)", r.status_code == 201, r.text)
+        created_recipe_ids.append(r.json()["id"])
+        schnitzel = r.json()
+        r = api.post("/recipes/", json={**manual, "ingredients": [{"name": "almond flour"}]})
+        check("false 'tree nuts' label rejected", r.status_code == 422, r.text)
+        r = api.patch(f"/recipes/{schnitzel['id']}", json={"ingredients": [{"name": "chicken cutlets"}, {"name": "butter"}]})
+        check("edit adding butter to a meat recipe rejected", r.status_code == 422, r.text)
+        r = api.patch(f"/recipes/{schnitzel['id']}", json={"title": "Smoke Test Schnitzel (renamed)", "cook_time_mins": None})
+        check("title-only edit allowed", r.status_code == 200 and r.json()["title"].endswith("(renamed)"), r.text)
+
+        step("11. Security: no access to anything that isn't yours")
         r = httpx.get(f"{BASE_URL}/recipes/", timeout=10)
         check("no-login request gets 401", r.status_code == 401, str(r.status_code))
         # A made-up ID goes through the same ownership check as another user's ID
@@ -175,7 +189,7 @@ def main() -> None:
         r = api.get("/recipes/not-a-real-id")
         check("malformed ID gets 422, not a crash", r.status_code == 422, str(r.status_code))
     finally:
-        step("11. Clean up")
+        step("12. Clean up")
         for collection_id in created_collection_ids:
             api.delete(f"/collections/{collection_id}")
         for recipe_id in created_recipe_ids:

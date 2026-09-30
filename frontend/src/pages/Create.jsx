@@ -10,7 +10,7 @@ import { useApi } from '../lib/useApi'
 
 const MODES = {
   generate: { emoji: '✨', heading: 'Generate a recipe with AI', button: 'Generate recipe' },
-  modify: { emoji: '✏️', heading: 'Modify a saved recipe', button: 'Create new version' },
+  modify: { emoji: '🔄', heading: 'Modify a saved recipe', button: 'Create new version' },
   import: { emoji: '📋', heading: 'Import a recipe', button: 'Import recipe' },
 }
 

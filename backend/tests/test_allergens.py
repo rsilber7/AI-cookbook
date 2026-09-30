@@ -78,3 +78,20 @@ def test_kosher_rejects_pork_and_shellfish():
 
 def test_kosher_meat_recipe_allows_plant_milk():
     assert find_kosher_problems(ingredients("chicken", "oat milk", "olive oil"), KosherCategory.meat) == []
+
+
+def test_check_recipe_reports_which_label_breaks():
+    from app.allergens import check_recipe
+    from app.models.recipe import DietarySystem
+
+    findings = check_recipe(
+        ingredients("chicken", "butter", "almond flour"), DietarySystem.kosher, KosherCategory.meat, ["tree nuts"]
+    )
+    assert {(f.ingredient, f.label) for f in findings} == {("almond flour", "tree nuts"), ("butter", "kosher")}
+
+
+def test_check_recipe_skips_kosher_rules_for_other_diets():
+    from app.allergens import check_recipe
+    from app.models.recipe import DietarySystem
+
+    assert check_recipe(ingredients("chicken", "butter"), DietarySystem.none, None, []) == []

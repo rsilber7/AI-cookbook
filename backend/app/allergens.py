@@ -5,7 +5,7 @@ These checks are deliberately cautious: a false alarm is better than a miss.
 """
 import re
 from dataclasses import dataclass
-from app.models.recipe import Ingredient, KosherCategory
+from app.models.recipe import DietarySystem, Ingredient, KosherCategory
 
 # Words that indicate each major allergen, including common hidden sources
 ALLERGEN_KEYWORDS: dict[str, list[str]] = {
@@ -95,6 +95,8 @@ MEAT = [
 class Finding:
     ingredient: str
     problem: str
+    # The label this breaks: an allergy (e.g. "tree nuts") or "kosher"
+    label: str
 
     def __str__(self) -> str:
         return f"'{self.ingredient}' {self.problem}"
@@ -134,7 +136,7 @@ def find_allergens(ingredients: list[Ingredient], allergies: list[str]) -> list[
             else:
                 # Custom allergy (e.g. "cilantro"): match the word itself
                 hits = [allergy] if f"{allergy}-free" not in text and _contains(text, [allergy]) else []
-            findings += [Finding(ingredient.name, f"may contain {hit}") for hit in hits]
+            findings += [Finding(ingredient.name, f"may contain {hit}", allergy) for hit in hits]
     return findings
 
 
@@ -146,9 +148,22 @@ def find_kosher_problems(ingredients: list[Ingredient], category: KosherCategory
         is_meat = _contains(text, MEAT)
         is_dairy = _has_allergen(text, "dairy")
         if _contains(text, NON_KOSHER):
-            findings.append(Finding(ingredient.name, "is not kosher"))
+            findings.append(Finding(ingredient.name, "is not kosher", "kosher"))
         elif is_dairy and category in (KosherCategory.meat, KosherCategory.parve):
-            findings.append(Finding(ingredient.name, f"is dairy, but the recipe is {category.value}"))
+            findings.append(Finding(ingredient.name, f"is dairy, but the recipe is {category.value}", "kosher"))
         elif is_meat and category in (KosherCategory.dairy, KosherCategory.parve):
-            findings.append(Finding(ingredient.name, f"is meat, but the recipe is {category.value}"))
+            findings.append(Finding(ingredient.name, f"is meat, but the recipe is {category.value}", "kosher"))
+    return findings
+
+
+def check_recipe(
+    ingredients: list[Ingredient],
+    dietary_system: DietarySystem,
+    kosher_category: KosherCategory | None,
+    allergies: list[str],
+) -> list[Finding]:
+    """Everything wrong with a recipe's labels, for AI and hand-written recipes alike."""
+    findings = find_allergens(ingredients, allergies)
+    if dietary_system == DietarySystem.kosher:
+        findings += find_kosher_problems(ingredients, kosher_category)
     return findings

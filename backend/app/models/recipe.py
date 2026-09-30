@@ -69,6 +69,8 @@ class RecipeCreate(BaseModel):
 
 
 class RecipeUpdate(BaseModel):
+    """Only the fields sent are changed. Optional fields (description, times, ...)
+    can be cleared by sending null; label changes are re-checked by the router."""
     title: Optional[str] = None
     description: Optional[str] = None
     ingredients: Optional[list[Ingredient]] = None
@@ -80,6 +82,36 @@ class RecipeUpdate(BaseModel):
     notes: Optional[str] = None
     image_url: Optional[str] = None
     is_pinned: Optional[bool] = None
+    dietary_system: Optional[DietarySystem] = None
+    kosher_category: Optional[KosherCategory] = None
+    allergies_applied: Optional[list[str]] = None
+
+    @model_validator(mode="after")
+    def check_required_not_cleared(self):
+        required = {"title", "ingredients", "steps", "tags", "is_pinned", "dietary_system", "allergies_applied"}
+        cleared = sorted(f for f in self.model_fields_set & required if getattr(self, f) is None)
+        if cleared:
+            raise ValueError(f"These can't be empty: {', '.join(cleared)}")
+        return self
+
+
+class RecipeCheck(BaseModel):
+    """Labels to verify against a recipe's ingredients (the free keyword scan)."""
+    ingredients: list[Ingredient]
+    dietary_system: DietarySystem = DietarySystem.none
+    kosher_category: Optional[KosherCategory] = None
+    allergies: list[str] = []
+
+
+class CheckProblem(BaseModel):
+    ingredient: str
+    problem: str
+    label: str  # the allergy or "kosher" that this problem breaks
+    message: str
+
+
+class RecipeCheckResult(BaseModel):
+    problems: list[CheckProblem]
 
 
 class Recipe(BaseModel):

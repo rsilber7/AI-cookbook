@@ -1,7 +1,7 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from openai import AsyncOpenAI, OpenAIError
-from app.allergens import find_allergens, find_kosher_problems
+from app.allergens import check_recipe
 from app.config import settings
 from app.database import supabase
 from app.dependencies import get_current_user
@@ -107,9 +107,7 @@ async def _ask_ai(
 
 def _safety_problems(ai_recipe: AIRecipe, dietary_system: DietarySystem, allergies: list[str]) -> list[str]:
     """Our own check of the AI's ingredients against the active rules."""
-    findings = find_allergens(ai_recipe.ingredients, allergies)
-    if dietary_system == DietarySystem.kosher:
-        findings += find_kosher_problems(ai_recipe.ingredients, ai_recipe.kosher_category)
+    findings = check_recipe(ai_recipe.ingredients, dietary_system, ai_recipe.kosher_category, allergies)
     return [str(f) for f in findings]
 
 
