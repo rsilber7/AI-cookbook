@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import BackLink from '../components/BackLink'
+import RecipeCollections from '../components/RecipeCollections'
 import RecipeView from '../components/RecipeView'
 import { api } from '../lib/api'
 import { useApi } from '../lib/useApi'
@@ -66,6 +67,8 @@ export default function RecipePage() {
         </div>
       </div>
       {actionError && <p className="mt-3 text-red-700">{actionError}</p>}
+
+      <RecipeCollections recipeId={recipe.id} />
 
       <div className="mt-4">
         <RecipeView recipe={recipe} />

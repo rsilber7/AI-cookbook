@@ -1,9 +1,10 @@
 import BackLink from '../components/BackLink'
 import CollectionTile from '../components/CollectionTile'
+import NewCollectionTile from '../components/NewCollectionTile'
 import { useApi } from '../lib/useApi'
 
 export default function AllCollections() {
-  const { data: collections, error } = useApi('/collections/')
+  const { data: collections, setData, error } = useApi('/collections/')
 
   return (
     <div>
@@ -17,6 +18,7 @@ export default function AllCollections() {
           {collections.map((c) => (
             <CollectionTile key={c.id} to={`/collections/${c.id}`} name={c.name} />
           ))}
+          <NewCollectionTile onCreated={(c) => setData([...collections, c])} />
         </div>
       )}
     </div>

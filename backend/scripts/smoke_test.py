@@ -48,6 +48,7 @@ def main() -> None:
         timeout=120,
     )
     created_recipe_ids: list[str] = []
+    created_collection_ids: list[str] = []
     collection_existed = any(c["name"] == COLLECTION for c in api.get("/collections/").json())
 
     try:
@@ -126,7 +127,35 @@ def main() -> None:
         r = api.post("/recipes/import", json={"text": ""})
         check("empty paste rejected", r.status_code == 422, str(r.status_code))
 
-        step("9. Security: no access to anything that isn't yours")
+        step("9. Manage collections")
+        r = api.post("/collections/", json={"name": f"{COLLECTION} Empty"})
+        check("empty collection created", r.status_code == 201, r.text)
+        extra = r.json()
+        created_collection_ids.append(extra["id"])
+        r = api.get(f"/collections/{extra['id']}/recipes")
+        check("empty collection loads with no recipes", r.status_code == 200 and r.json() == [], r.text)
+        r = api.post("/collections/", json={"name": f"{COLLECTION} EMPTY"})
+        check("duplicate name rejected (any capitalization)", r.status_code == 409, r.text)
+        r = api.patch(f"/collections/{extra['id']}", json={"name": f"{COLLECTION} Moved"})
+        check("collection renamed", r.status_code == 200 and r.json()["name"] == f"{COLLECTION} Moved", r.text)
+
+        smoke_id = next(c["id"] for c in api.get("/collections/").json() if c["name"] == COLLECTION)
+        r = api.put(f"/recipes/{original['id']}/collections", json={"collection_ids": [extra["id"]]})
+        check("recipe moved to the other collection", r.status_code == 200 and [c["id"] for c in r.json()] == [extra["id"]], r.text)
+        old_contents = api.get(f"/collections/{smoke_id}/recipes").json()
+        check("recipe left the old collection", all(x["id"] != original["id"] for x in old_contents))
+        r = api.delete(f"/collections/{extra['id']}/recipes/{original['id']}")
+        check("recipe removed from collection", r.status_code == 204, r.text)
+        check("collection is empty again", api.get(f"/collections/{extra['id']}/recipes").json() == [])
+        r = api.put(f"/recipes/{original['id']}/collections", json={"collection_ids": [str(uuid.uuid4())]})
+        check("can't move a recipe into someone else's collection", r.status_code == 404, r.text)
+
+        api.put(f"/recipes/{original['id']}/collections", json={"collection_ids": [extra["id"]]})
+        r = api.delete(f"/collections/{extra['id']}")
+        check("collection deleted", r.status_code == 204, r.text)
+        check("its recipe still exists", api.get(f"/recipes/{original['id']}").status_code == 200)
+
+        step("10. Security: no access to anything that isn't yours")
         r = httpx.get(f"{BASE_URL}/recipes/", timeout=10)
         check("no-login request gets 401", r.status_code == 401, str(r.status_code))
         # A made-up ID goes through the same ownership check as another user's ID
@@ -142,7 +171,9 @@ def main() -> None:
         r = api.get("/recipes/not-a-real-id")
         check("malformed ID gets 422, not a crash", r.status_code == 422, str(r.status_code))
     finally:
-        step("10. Clean up")
+        step("11. Clean up")
+        for collection_id in created_collection_ids:
+            api.delete(f"/collections/{collection_id}")
         for recipe_id in created_recipe_ids:
             api.delete(f"/recipes/{recipe_id}")
         if not collection_existed:

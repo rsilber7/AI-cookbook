@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import CollectionTile from '../components/CollectionTile'
+import NewCollectionTile from '../components/NewCollectionTile'
 import RecipeCard from '../components/RecipeCard'
 import { useApi } from '../lib/useApi'
 
@@ -53,6 +54,7 @@ export default function Home() {
               … {hiddenCount} more
             </Link>
           )}
+          <NewCollectionTile onCreated={(c) => collections.setData([...collections.data, c])} />
         </div>
       </section>
     </div>
