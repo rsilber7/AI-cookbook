@@ -126,6 +126,10 @@ def main() -> None:
 
         r = api.post("/recipes/import", json={"text": ""})
         check("empty paste rejected", r.status_code == 422, str(r.status_code))
+        r = api.post("/recipes/import", json={"text": pasted, "image": "data:image/jpeg;base64,AAAA"})
+        check("text + photo together rejected", r.status_code == 422, str(r.status_code))
+        r = api.post("/recipes/import", json={"image": "https://example.com/recipe.jpg"})
+        check("non-image data rejected", r.status_code == 422, str(r.status_code))
 
         step("9. Manage collections")
         r = api.post("/collections/", json={"name": f"{COLLECTION} Empty"})
