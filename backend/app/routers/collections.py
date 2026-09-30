@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.dependencies import get_current_user
 from app.database import supabase
@@ -29,16 +30,19 @@ async def create_collection(body: CollectionCreate, current_user=Depends(get_cur
 
 
 @router.delete("/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_collection(collection_id: str, current_user=Depends(get_current_user)):
-    supabase.table("collections").delete().eq("id", collection_id).eq("user_id", current_user.id).execute()
+async def delete_collection(collection_id: UUID, current_user=Depends(get_current_user)):
+    supabase.table("collections").delete().eq("id", str(collection_id)).eq("user_id", current_user.id).execute()
 
 
 @router.get("/{collection_id}/recipes")
-async def list_recipes_in_collection(collection_id: str, current_user=Depends(get_current_user)):
+async def list_recipes_in_collection(collection_id: UUID, current_user=Depends(get_current_user)):
+    # Inner join on collections so only the user's own collection matches
+    # (the service key bypasses RLS, so ownership must be checked here)
     result = (
         supabase.table("recipe_collections")
-        .select("recipes(*)")
-        .eq("collection_id", collection_id)
+        .select("recipes(*), collections!inner(user_id)")
+        .eq("collection_id", str(collection_id))
+        .eq("collections.user_id", current_user.id)
         .execute()
     )
     return [row["recipes"] for row in result.data]

@@ -2,10 +2,11 @@ from fastapi import Header, HTTPException, status
 from app.database import supabase
 
 
-async def get_current_user(authorization: str = Header(...)):
+async def get_current_user(authorization: str | None = Header(None)):
     """Extract and verify the Supabase JWT from the Authorization header."""
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header")
+    # Optional header so a missing login is a 401 (not FastAPI's generic 422)
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not logged in")
 
     token = authorization.removeprefix("Bearer ")
 
