@@ -43,12 +43,18 @@ export default function RecipePage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <BackLink />
-        <div className="flex gap-2 text-sm">
+        <div className="flex flex-wrap gap-2 text-sm">
+          <Link
+            to={`/recipes/${recipe.id}/edit`}
+            className="rounded-lg bg-white px-3 py-1.5 ring-1 ring-stone-300 hover:bg-stone-100"
+          >
+            ✏️ Edit
+          </Link>
           <Link
             to={`/create?mode=modify&base=${recipe.id}`}
             className="rounded-lg bg-amber-700 px-3 py-1.5 font-medium text-white hover:bg-amber-800"
           >
-            ✏️ Adapt with AI
+            🔄 Adapt with AI
           </Link>
           <button
             onClick={togglePin}

@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 const OPTIONS = [
-  { mode: 'generate', emoji: '✨', title: 'Generate with AI', text: 'Describe it, get a recipe' },
-  { mode: 'modify', emoji: '✏️', title: 'Modify a recipe', text: 'Adapt one you already saved' },
-  { mode: 'import', emoji: '📋', title: 'Import a recipe', text: 'Paste one from anywhere' },
+  { to: '/create?mode=generate', emoji: '✨', title: 'Generate with AI', text: 'Describe it, get a recipe' },
+  { to: '/create?mode=modify', emoji: '🔄', title: 'Modify a recipe', text: 'Adapt one you already saved' },
+  { to: '/create?mode=import', emoji: '📋', title: 'Import a recipe', text: 'Paste text or upload a photo' },
+  { to: '/recipes/new', emoji: '✍️', title: 'Write it myself', text: 'Type in your own recipe' },
 ]
 
 // Floating "🍳 +" button in the bottom corner that opens the three ways to add a recipe
@@ -17,8 +18,8 @@ export default function NewRecipeButton() {
         <div className="w-64 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-stone-200">
           {OPTIONS.map((o) => (
             <Link
-              key={o.mode}
-              to={`/create?mode=${o.mode}`}
+              key={o.to}
+              to={o.to}
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-3 hover:bg-amber-50"
             >

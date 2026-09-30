@@ -6,6 +6,7 @@ import CollectionPage from './pages/CollectionPage'
 import CreatePage from './pages/Create'
 import Home from './pages/Home'
 import Login from './pages/Login'
+import RecipeEditorPage from './pages/RecipeEditor'
 import RecipePage from './pages/RecipePage'
 
 export default function App() {
@@ -23,7 +24,9 @@ export default function App() {
           <Route path="/collections" element={<AllCollections />} />
           <Route path="/collections/all" element={<CollectionPage />} />
           <Route path="/collections/:id" element={<CollectionPage />} />
+          <Route path="/recipes/new" element={<RecipeEditorPage />} />
           <Route path="/recipes/:id" element={<RecipePage />} />
+          <Route path="/recipes/:id/edit" element={<RecipeEditorPage />} />
           <Route path="/create" element={<CreatePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
