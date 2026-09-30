@@ -5,6 +5,7 @@ from app.allergens import check_recipe
 from app.config import settings
 from app.database import supabase
 from app.dependencies import get_current_user
+from app.rate_limit import enforce_ai_limit
 from app.models.generate import (
     AIPhotoRecipe, AIRecipe, GenerateRequest, GenerateResponse, ImportRequest, RuleOptions,
 )
@@ -189,6 +190,7 @@ async def _checked_ai_recipe(
 @router.post("/generate", response_model=GenerateResponse)
 async def generate_recipe(body: GenerateRequest, current_user=Depends(get_current_user)):
     """Generate a draft recipe (or a new version of an existing one). Nothing is saved."""
+    enforce_ai_limit(current_user.id)
 
     # 1-2. Work out which rules are active for this request
     dietary_system, allergies = _active_rules(body, current_user.id)
@@ -276,6 +278,7 @@ async def import_recipe(body: ImportRequest, current_user=Depends(get_current_us
 
     Nothing is saved, and photos are never stored.
     """
+    enforce_ai_limit(current_user.id)
     dietary_system, allergies = _active_rules(body, current_user.id)
     title_rule = (
         "Use the recipe's own title if it has one; otherwise give it a short, appetizing title. "

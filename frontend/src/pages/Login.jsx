@@ -1,20 +1,29 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+// A shared demo account so visitors can try the app without signing up.
+// Its password is public by design: only ever point this at a throwaway account.
+const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD
+
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(event) {
-    event.preventDefault()
+  async function logIn(credentials) {
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword(credentials)
     // On success, useSession sees the new session and App redirects
     if (error) setError(error.message)
     setLoading(false)
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    logIn({ email, password })
   }
 
   return (
@@ -57,6 +66,20 @@ export default function Login() {
             {loading ? 'Logging in…' : 'Log in'}
           </button>
         </form>
+
+        {DEMO_EMAIL && DEMO_PASSWORD && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-stone-500">Just looking around?</p>
+            <button
+              onClick={() => logIn({ email: DEMO_EMAIL, password: DEMO_PASSWORD })}
+              disabled={loading}
+              className="mt-2 w-full rounded-lg bg-white px-4 py-2.5 font-medium text-amber-800 ring-1 ring-amber-300 hover:bg-amber-50 disabled:opacity-60"
+            >
+              👀 Try the demo
+            </button>
+            <p className="mt-2 text-xs text-stone-400">A shared sample cookbook. It's reset from time to time.</p>
+          </div>
+        )}
       </div>
     </main>
   )

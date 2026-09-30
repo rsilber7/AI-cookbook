@@ -1,12 +1,15 @@
 import { supabase } from './supabase'
 
+// Deployed: the backend's own URL (VITE_API_URL). In dev, Vite forwards /api/* to
+// http://localhost:8000 (see vite.config.js).
+const API_BASE = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '')
+
 // Calls our FastAPI backend with the logged-in user's token.
-// In dev, Vite forwards /api/* to http://localhost:8000 (see vite.config.js).
 export async function api(path, { method = 'GET', body } = {}) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
 
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
