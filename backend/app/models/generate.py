@@ -30,10 +30,20 @@ class GenerateRequest(RuleOptions):
 
 
 class ImportRequest(RuleOptions):
+    """Import from pasted text OR a photo (exactly one)."""
     # A recipe pasted from anywhere (a text, the Notes app, a website)
-    text: str = Field(min_length=1, max_length=20_000)
+    text: Optional[str] = Field(None, min_length=1, max_length=20_000)
+    # A photo/screenshot as a data URL. The browser shrinks it to a small JPEG
+    # first, so this cap (~4.5 MB of image) is generous.
+    image: Optional[str] = Field(None, pattern=r"^data:image/(jpeg|png|webp);base64,", max_length=6_000_000)
     # User-chosen title; otherwise the recipe's own title is kept
     title: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_one_source(self):
+        if (self.text is None) == (self.image is None):
+            raise ValueError("Send either text or image, not both")
+        return self
 
 
 class AIRecipe(BaseModel):
@@ -52,6 +62,15 @@ class AIRecipe(BaseModel):
     tags: list[str]
     kosher_category: Optional[KosherCategory]
     notes: Optional[str]
+
+
+class AIPhotoRecipe(AIRecipe):
+    """Reply shape for photo imports: the recipe plus what the photo actually says.
+
+    There's no pasted text to keep, so the transcription becomes the recipe's
+    original_text (the photo itself isn't stored).
+    """
+    source_text: str
 
 
 class GenerateResponse(BaseModel):

@@ -5,6 +5,7 @@ import RecipeView from '../components/RecipeView'
 import RulesPanel from '../components/RulesPanel'
 import SaveDialog from '../components/SaveDialog'
 import { api } from '../lib/api'
+import { imageFileToDataUrl } from '../lib/image'
 import { useApi } from '../lib/useApi'
 
 const MODES = {
@@ -29,6 +30,8 @@ function Create({ mode, initialBaseId }) {
   const [description, setDescription] = useState('')
   const [title, setTitle] = useState('')
   const [pasted, setPasted] = useState('')
+  const [importSource, setImportSource] = useState('text')
+  const [photo, setPhoto] = useState(null) // shrunk JPEG as a data URL; never stored
   const [baseId, setBaseId] = useState(initialBaseId)
 
   // Every draft the AI has produced, so the user can flip back to an earlier one
@@ -62,7 +65,10 @@ function Create({ mode, initialBaseId }) {
   function start(event) {
     event.preventDefault()
     const titleOverride = title.trim() || null
-    if (mode === 'import') requestDraft('/recipes/import', { text: pasted, title: titleOverride })
+    if (mode === 'import' && importSource === 'photo') {
+      if (!photo) return setError('Choose a photo first.')
+      requestDraft('/recipes/import', { image: photo, title: titleOverride })
+    } else if (mode === 'import') requestDraft('/recipes/import', { text: pasted, title: titleOverride })
     else if (mode === 'modify') requestDraft('/recipes/generate', { description, base_recipe_id: baseId, title: titleOverride })
     else requestDraft('/recipes/generate', { description, title: titleOverride })
   }
@@ -100,18 +106,14 @@ function Create({ mode, initialBaseId }) {
           )}
 
           {mode === 'import' ? (
-            <label className="block">
-              <span className="font-medium text-stone-700">Paste the recipe</span>
-              <textarea
-                required
-                maxLength={20000}
-                rows={10}
-                value={pasted}
-                onChange={(e) => setPasted(e.target.value)}
-                placeholder="From a text, the Notes app, a website… any format is fine."
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
-              />
-            </label>
+            <ImportSource
+              source={importSource}
+              onSourceChange={setImportSource}
+              pasted={pasted}
+              onPastedChange={setPasted}
+              photo={photo}
+              onPhotoChange={setPhoto}
+            />
           ) : (
             <label className="block">
               <span className="font-medium text-stone-700">
@@ -227,6 +229,82 @@ function Create({ mode, initialBaseId }) {
           onClose={() => setSaving(false)}
           onSaved={(saved) => navigate(`/recipes/${saved.id}`)}
         />
+      )}
+    </div>
+  )
+}
+
+// Import from pasted text or a photo/screenshot (the backend takes exactly one)
+function ImportSource({ source, onSourceChange, pasted, onPastedChange, photo, onPhotoChange }) {
+  const [reading, setReading] = useState(false)
+  const [photoError, setPhotoError] = useState(null)
+
+  async function pickPhoto(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setReading(true)
+    setPhotoError(null)
+    try {
+      onPhotoChange(await imageFileToDataUrl(file))
+    } catch (e) {
+      onPhotoChange(null)
+      setPhotoError(e.message)
+    } finally {
+      setReading(false)
+    }
+  }
+
+  const tab = (value, label) => (
+    <button
+      type="button"
+      onClick={() => onSourceChange(value)}
+      aria-pressed={source === value}
+      className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${
+        source === value ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
+      }`}
+    >
+      {label}
+    </button>
+  )
+
+  return (
+    <div>
+      <div className="flex gap-1 rounded-xl bg-stone-100 p-1">
+        {tab('text', '📋 Paste text')}
+        {tab('photo', '📷 Upload a photo')}
+      </div>
+
+      {source === 'text' ? (
+        <label className="mt-4 block">
+          <span className="font-medium text-stone-700">Paste the recipe</span>
+          <textarea
+            required
+            maxLength={20000}
+            rows={10}
+            value={pasted}
+            onChange={(e) => onPastedChange(e.target.value)}
+            placeholder="From a text, the Notes app, a website… any format is fine."
+            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+          />
+        </label>
+      ) : (
+        <div className="mt-4">
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-stone-300 bg-white p-6 text-center hover:border-amber-400">
+            {photo ? (
+              <img src={photo} alt="Recipe to import" className="max-h-72 rounded-lg object-contain" />
+            ) : (
+              <>
+                <span className="text-4xl" aria-hidden>📷</span>
+                <span className="font-medium">{reading ? 'Reading photo…' : 'Choose a photo or screenshot'}</span>
+                <span className="text-sm text-stone-500">A cookbook page, a handwritten card, an Instagram post…</span>
+              </>
+            )}
+            <input type="file" accept="image/*" onChange={pickPhoto} className="sr-only" />
+          </label>
+          {photo && <p className="mt-2 text-center text-sm text-stone-500">Tap the photo to choose a different one.</p>}
+          {photoError && <p className="mt-2 text-sm text-red-700">{photoError}</p>}
+          <p className="mt-2 text-xs text-stone-400">Your photo is only used to read the recipe. It isn't saved.</p>
+        </div>
       )}
     </div>
   )
