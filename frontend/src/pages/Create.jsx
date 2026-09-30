@@ -21,13 +21,20 @@ const DEFAULT_RULES = { apply_dietary: true, apply_allergies: true, extra_allerg
 export default function CreatePage() {
   const [params] = useSearchParams()
   const mode = MODES[params.get('mode')] ? params.get('mode') : 'generate'
-  return <Create key={params.toString()} mode={mode} initialBaseId={params.get('base') ?? ''} />
+  return (
+    <Create
+      key={params.toString()}
+      mode={mode}
+      initialBaseId={params.get('base') ?? ''}
+      initialDescription={params.get('prompt') ?? ''}
+    />
+  )
 }
 
-function Create({ mode, initialBaseId }) {
+function Create({ mode, initialBaseId, initialDescription }) {
   const navigate = useNavigate()
   const [rules, setRules] = useState(DEFAULT_RULES)
-  const [description, setDescription] = useState('')
+  const [description, setDescription] = useState(initialDescription)
   const [title, setTitle] = useState('')
   const [pasted, setPasted] = useState('')
   const [importSource, setImportSource] = useState('text')

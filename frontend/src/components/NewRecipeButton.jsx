@@ -15,13 +15,13 @@ export default function NewRecipeButton() {
   return (
     <div className="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-3">
       {open && (
-        <div className="w-64 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-stone-200">
+        <div className="w-64 overflow-hidden rounded-2xl bg-paper shadow-xl ring-1 ring-amber-900/10">
           {OPTIONS.map((o) => (
             <Link
               key={o.to}
               to={o.to}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-amber-50"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-butter/20"
             >
               <span className="text-2xl" aria-hidden>{o.emoji}</span>
               <span>
@@ -36,9 +36,9 @@ export default function NewRecipeButton() {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-label="New recipe"
-        className="flex items-center gap-2 rounded-full bg-amber-600 py-3 pl-4 pr-5 text-white shadow-lg transition hover:scale-105 hover:bg-amber-700"
+        className="hover-wiggle flex items-center gap-2 rounded-full bg-tomato py-3 pl-4 pr-5 font-display text-white shadow-lg transition hover:scale-105"
       >
-        <span className="text-2xl leading-none" aria-hidden>🍳</span>
+        <span className="wiggle-target inline-block text-2xl leading-none" aria-hidden>🍳</span>
         <span className={`text-2xl font-light leading-none transition ${open ? 'rotate-45' : ''}`}>+</span>
         <span className="font-medium">New recipe</span>
       </button>

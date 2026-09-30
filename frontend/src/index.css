@@ -1,1 +1,71 @@
 @import "tailwindcss";
+
+/* Cookbook theme: chunky headlines, handwritten notes, kitchen colors */
+@theme {
+  --font-display: "Fredoka", ui-rounded, system-ui, sans-serif;
+  --font-hand: "Caveat", "Comic Sans MS", cursive;
+  /* Existing headings use font-serif; give them the same chunky display font */
+  --font-serif: "Fredoka", ui-rounded, system-ui, sans-serif;
+
+  --color-cream: #fff8ec;
+  --color-paper: #fffdf8;
+  --color-tomato: #e4572e;
+  --color-butter: #f6c85f;
+  --color-basil: #5b8c51;
+  --color-blueberry: #4c6fbf;
+  --color-plum: #9b5de5;
+}
+
+body {
+  background-color: var(--color-cream);
+  /* faint dotted "recipe paper" */
+  background-image: radial-gradient(rgb(186 117 23 / 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Washi tape on the top of a card */
+.tape::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 72px;
+  height: 20px;
+  transform: translateX(-50%) rotate(-3deg);
+  background: rgb(246 200 95 / 0.75);
+  border-radius: 2px;
+}
+
+@keyframes fall {
+  from { transform: translateY(-10vh) rotate(0deg); }
+  to { transform: translateY(110vh) rotate(300deg); }
+}
+
+@keyframes book-open {
+  0% { transform: perspective(1400px) rotateY(0deg); }
+  100% { transform: perspective(1400px) rotateY(-165deg); visibility: hidden; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+.falling-food { animation: fall linear infinite; }
+.book-cover { transform-origin: left center; animation: book-open 1.4s cubic-bezier(0.6, 0, 0.3, 1) 0.5s forwards; }
+.fade-up { animation: fade-up 0.5s ease-out both; }
+.hover-wiggle:hover .wiggle-target { animation: wiggle 0.5s ease-in-out; }
+
+/* Respect people who turn off motion in their device settings */
+@media (prefers-reduced-motion: reduce) {
+  .falling-food { display: none; }
+  .book-cover { display: none; }
+  .fade-up, .hover-wiggle:hover .wiggle-target { animation: none; }
+  * { transition: none !important; }
+}
