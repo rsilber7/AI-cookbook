@@ -2,7 +2,7 @@
 
 **Have it all in one place.** A personal recipe library where AI writes, adapts, and imports recipes, while your diet and allergies are always respected, and **checked by code, not just promised by a prompt**.
 
-**Live demo:** _add your Vercel link here_ · click **👀 Try the demo** on the login page, no sign-up needed.
+**Live demo: [ai-cookbook-umber.vercel.app](https://ai-cookbook-umber.vercel.app)** · click **👀 Try the demo** on the login page, no sign-up needed. (The backend runs on a free server that sleeps when idle, so the first load can take up to a minute.)
 
 <!-- Screenshots: add images to docs/screenshots/ and uncomment
 ![Front page](docs/screenshots/home.png)
