@@ -3,12 +3,13 @@
 Run from backend/ with the server running:
     .venv/bin/python scripts/smoke_test.py [base_url]
 
-Uses a TEST account (its profile is set to kosher + tree nuts). Makes 2-4 AI
+Uses a TEST account (its profile is set to kosher + tree nuts). Makes 3-5 AI
 calls (well under a cent) and deletes everything it creates at the end.
 """
 import getpass
 import os
 import sys
+import uuid
 
 import httpx
 from dotenv import load_dotenv
@@ -125,12 +126,23 @@ def main() -> None:
         r = api.post("/recipes/import", json={"text": ""})
         check("empty paste rejected", r.status_code == 422, str(r.status_code))
 
-        
-        step("8. Security: requests without a login are rejected")
+        step("9. Security: no access to anything that isn't yours")
         r = httpx.get(f"{BASE_URL}/recipes/", timeout=10)
-        check("no-login request rejected", r.status_code in (401, 422), str(r.status_code))
+        check("no-login request gets 401", r.status_code == 401, str(r.status_code))
+        # A made-up ID goes through the same ownership check as another user's ID
+        not_mine = str(uuid.uuid4())
+        r = api.get(f"/collections/{not_mine}/recipes")
+        check("someone else's collection returns nothing", r.status_code == 200 and r.json() == [], r.text)
+        count_before = len(api.get("/recipes/").json())
+        r = api.post("/recipes/", json={"title": "Should not save", "ingredients": [], "steps": [], "collection_ids": [not_mine]})
+        check("saving into someone else's collection rejected", r.status_code == 404, r.text)
+        r = api.post("/recipes/", json={"title": "Should not save", "ingredients": [], "steps": [], "parent_recipe_id": not_mine})
+        check("claiming someone else's recipe as parent rejected", r.status_code == 404, r.text)
+        check("rejected saves left nothing behind", len(api.get("/recipes/").json()) == count_before)
+        r = api.get("/recipes/not-a-real-id")
+        check("malformed ID gets 422, not a crash", r.status_code == 422, str(r.status_code))
     finally:
-        step("9. Clean up")
+        step("10. Clean up")
         for recipe_id in created_recipe_ids:
             api.delete(f"/recipes/{recipe_id}")
         if not collection_existed:

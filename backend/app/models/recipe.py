@@ -2,6 +2,7 @@ from pydantic import BaseModel, model_validator
 from typing import Optional
 from enum import Enum
 from datetime import datetime
+from uuid import UUID
 
 
 class RecipeSource(str, Enum):
@@ -55,8 +56,8 @@ class RecipeCreate(BaseModel):
     original_text: Optional[str] = None
     notes: Optional[str] = None
     image_url: Optional[str] = None
-    parent_recipe_id: Optional[str] = None
-    collection_ids: list[str] = []
+    parent_recipe_id: Optional[UUID] = None
+    collection_ids: list[UUID] = []
     collection_names: list[str] = []  # found or created at save time
 
     @model_validator(mode="after")
